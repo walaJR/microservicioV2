@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.tienda.microservicio.dto.EfsFileInfo;
+import com.tienda.microservicio.dto.RenameResponse;
 import com.tienda.microservicio.dto.UploadResponse;
 
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +29,6 @@ public class AwsEfsService {
     private String efsMountPath;
 
     // Sube un archivo al sistema EFS
-
     public UploadResponse uploadFile(MultipartFile file) {
         try {
             // Validamos que el directorio EFS existe
@@ -67,8 +67,78 @@ public class AwsEfsService {
         }
     }
 
-    // Listamos todos los archivos del directorio EFS
+    // NUEVA FUNCIONALIDAD: Renombrar un archivo en EFS
+    public RenameResponse renameFile(String oldFileName, String newFileName) {
+        try {
+            // Validar que el archivo origen existe
+            Path oldPath = Paths.get(efsMountPath, oldFileName);
+            if (!Files.exists(oldPath)) {
+                log.warn("Archivo origen no encontrado: {}", oldFileName);
+                return new RenameResponse(
+                    "Archivo origen no encontrado: " + oldFileName,
+                    oldFileName,
+                    null,
+                    null,
+                    false
+                );
+            }
 
+            // Validar que el nuevo nombre no esté vacío
+            if (newFileName == null || newFileName.trim().isEmpty()) {
+                return new RenameResponse(
+                    "El nuevo nombre de archivo no puede estar vacío",
+                    oldFileName,
+                    null,
+                    null,
+                    false
+                );
+            }
+
+            // Limpiar el nuevo nombre de archivo (remover caracteres peligrosos)
+            String sanitizedNewFileName = sanitizeFileName(newFileName.trim());
+            
+            // Verificar que el archivo destino no existe
+            Path newPath = Paths.get(efsMountPath, sanitizedNewFileName);
+            if (Files.exists(newPath)) {
+                log.warn("El archivo destino ya existe: {}", sanitizedNewFileName);
+                return new RenameResponse(
+                    "Ya existe un archivo con el nombre: " + sanitizedNewFileName,
+                    oldFileName,
+                    sanitizedNewFileName,
+                    null,
+                    false
+                );
+            }
+
+            // Obtener información del archivo antes del renombrado
+            EfsFileInfo oldFileInfo = convertToEfsFileInfo(oldPath);
+
+            // Realizar el renombrado
+            Files.move(oldPath, newPath);
+            
+            log.info("Archivo renombrado exitosamente de '{}' a '{}'", oldFileName, sanitizedNewFileName);
+
+            return new RenameResponse(
+                "Archivo renombrado exitosamente",
+                oldFileName,
+                sanitizedNewFileName,
+                newPath.toString(),
+                true
+            );
+
+        } catch (IOException e) {
+            log.error("Error al renombrar archivo de '{}' a '{}': {}", oldFileName, newFileName, e.getMessage());
+            return new RenameResponse(
+                "Error al renombrar archivo: " + e.getMessage(),
+                oldFileName,
+                newFileName,
+                null,
+                false
+            );
+        }
+    }
+
+    // Listamos todos los archivos del directorio EFS
     public List<EfsFileInfo> listFiles() {
         List<EfsFileInfo> fileList = new ArrayList<>();
 
@@ -97,7 +167,6 @@ public class AwsEfsService {
     }
 
     // Descargar un archivo del EFS
-
     public byte[] downloadFile(String fileName) {
         try {
             Path filePath = Paths.get(efsMountPath, fileName);
@@ -115,7 +184,6 @@ public class AwsEfsService {
     }
 
     // Eliminar un archivo del EFS
-
     public boolean deleteFile(String fileName) {
         try {
             Path filePath = Paths.get(efsMountPath, fileName);
@@ -136,14 +204,12 @@ public class AwsEfsService {
     }
 
     // Verifica si un archivo existe en EFS
-
     public boolean fileExists(String fileName) {
         Path filePath = Paths.get(efsMountPath, fileName);
         return Files.exists(filePath) && Files.isRegularFile(filePath);
     }
 
     // Obtiene información detallada de un archivo
-
     public EfsFileInfo getFileInfo(String fileName) {
         try {
             Path filePath = Paths.get(efsMountPath, fileName);
@@ -161,7 +227,6 @@ public class AwsEfsService {
     }
 
     // Verifica que el directorio EFS exista y sea accesible
-
     public boolean isEfsAccessible() {
         try {
             Path efsPath = Paths.get(efsMountPath);
@@ -189,7 +254,6 @@ public class AwsEfsService {
     }
 
     // Métodos auxiliares
-
     private String generateUniqueFileName(String originalFileName) {
         String extension = "";
         if (originalFileName != null && originalFileName.contains(".")) {
@@ -212,5 +276,30 @@ public class AwsEfsService {
                 contentType,
                 filePath.toString() // Path completo como URL
         );
+    }
+
+    // NUEVO MÉTODO: Sanitizar nombre de archivo
+    private String sanitizeFileName(String fileName) {
+        if (fileName == null) {
+            return null;
+        }
+        
+        // Remover caracteres peligrosos para sistemas de archivos
+        String sanitized = fileName.replaceAll("[\\\\/:*?\"<>|]", "_");
+        
+        // Remover espacios del inicio y final
+        sanitized = sanitized.trim();
+        
+        // Limitar longitud del nombre (máximo 255 caracteres)
+        if (sanitized.length() > 255) {
+            sanitized = sanitized.substring(0, 255);
+        }
+        
+        // Evitar nombres vacíos
+        if (sanitized.isEmpty()) {
+            sanitized = "renamed_file_" + System.currentTimeMillis();
+        }
+        
+        return sanitized;
     }
 }
