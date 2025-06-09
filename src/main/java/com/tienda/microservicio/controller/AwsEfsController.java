@@ -12,12 +12,14 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.tienda.microservicio.dto.EfsFileInfo;
+import com.tienda.microservicio.dto.RenameResponse;
 import com.tienda.microservicio.dto.UploadResponse;
 import com.tienda.microservicio.service.AwsEfsService;
 
@@ -66,6 +68,54 @@ public class AwsEfsController {
             UploadResponse errorResponse = new UploadResponse(
                     "Error interno del servidor: " + e.getMessage(),
                     null, null, 0, false);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    /**
+     * NUEVO ENDPOINT: Renombrar un archivo en EFS
+     * PUT /api/efs/files/{oldFileName}/rename?newFileName=nuevoNombre.ext
+     */
+    @PutMapping("/files/{oldFileName}/rename")
+    public ResponseEntity<RenameResponse> renameFile(
+            @PathVariable String oldFileName,
+            @RequestParam String newFileName) {
+
+        // Validaciones
+        if (oldFileName == null || oldFileName.trim().isEmpty()) {
+            RenameResponse errorResponse = new RenameResponse(
+                    "El nombre del archivo origen no puede estar vacío",
+                    null, null, null, false);
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+
+        if (newFileName == null || newFileName.trim().isEmpty()) {
+            RenameResponse errorResponse = new RenameResponse(
+                    "El nuevo nombre del archivo no puede estar vacío",
+                    oldFileName, null, null, false);
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+
+        try {
+            RenameResponse response = awsEfsService.renameFile(oldFileName, newFileName);
+
+            if (response.isSuccess()) {
+                return ResponseEntity.ok(response);
+            } else {
+                // Determinar el código de estado HTTP apropiado
+                if (response.getMessage().contains("no encontrado")) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                } else if (response.getMessage().contains("ya existe")) {
+                    return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+                } else {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+                }
+            }
+
+        } catch (Exception e) {
+            RenameResponse errorResponse = new RenameResponse(
+                    "Error interno del servidor: " + e.getMessage(),
+                    oldFileName, newFileName, null, false);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }
