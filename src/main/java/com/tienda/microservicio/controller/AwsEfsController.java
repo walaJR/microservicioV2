@@ -32,10 +32,9 @@ public class AwsEfsController {
 
     private final AwsEfsService awsEfsService;
 
-    /**
-     * Endpoint para subir un archivo a EFS
-     * POST /api/efs/upload
-     */
+
+     // Endpoint para subir un archivo a EFS
+
     @PostMapping("/upload")
     public ResponseEntity<UploadResponse> uploadFile(@RequestParam("file") MultipartFile file) {
 
@@ -47,7 +46,7 @@ public class AwsEfsController {
             return ResponseEntity.badRequest().body(errorResponse);
         }
 
-        // Validar tamaño del archivo (ejemplo: máximo 50MB)
+        // Validar tamaño del archivo (Máximo 50MB)
         if (file.getSize() > 50 * 1024 * 1024) {
             UploadResponse errorResponse = new UploadResponse(
                     "El archivo es demasiado grande. Máximo 50MB permitido",
@@ -72,10 +71,10 @@ public class AwsEfsController {
         }
     }
 
-    /**
-     * NUEVO ENDPOINT: Renombrar un archivo en EFS
-     * PUT /api/efs/files/{oldFileName}/rename?newFileName=nuevoNombre.ext
-     */
+
+     // NUEVO ENDPOINT: Renombrar un archivo en EFS
+     // PUT /api/efs/files/{oldFileName}/rename?newFileName=nuevoNombre.ext
+
     @PutMapping("/files/{oldFileName}/rename")
     public ResponseEntity<RenameResponse> renameFile(
             @PathVariable String oldFileName,
@@ -102,7 +101,7 @@ public class AwsEfsController {
             if (response.isSuccess()) {
                 return ResponseEntity.ok(response);
             } else {
-                // Determinar el código de estado HTTP apropiado
+                // Determinar el response
                 if (response.getMessage().contains("no encontrado")) {
                     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
                 } else if (response.getMessage().contains("ya existe")) {
@@ -120,10 +119,10 @@ public class AwsEfsController {
         }
     }
 
-    /**
-     * Endpoint para listar todos los archivos de EFS
-     * GET /api/efs/files
-     */
+    
+     // Endpoint para listar todos los archivos de EFS
+     // GET /api/efs/files
+     
     @GetMapping("/files")
     public ResponseEntity<List<EfsFileInfo>> listFiles() {
         try {
@@ -134,10 +133,10 @@ public class AwsEfsController {
         }
     }
 
-    /**
-     * Endpoint para descargar un archivo de EFS
-     * GET /api/efs/download/{fileName}
-     */
+    
+     // Endpoint para descargar un archivo de EFS
+     // GET /api/efs/download/{fileName}
+     
     @GetMapping("/download/{fileName}")
     public ResponseEntity<byte[]> downloadFile(@PathVariable String fileName) {
         try {
@@ -179,10 +178,10 @@ public class AwsEfsController {
         }
     }
 
-    /**
-     * Endpoint para eliminar un archivo de EFS
-     * DELETE /api/efs/files/{fileName}
-     */
+    
+     // Endpoint para eliminar un archivo de EFS
+     // DELETE /api/efs/files/{fileName}
+     
     @DeleteMapping("/files/{fileName}")
     public ResponseEntity<Map<String, Object>> deleteFile(@PathVariable String fileName) {
         Map<String, Object> response = new HashMap<>();
@@ -216,10 +215,10 @@ public class AwsEfsController {
         }
     }
 
-    /**
-     * Endpoint para obtener información de un archivo específico de EFS
-     * GET /api/efs/files/{fileName}/info
-     */
+    
+     // Endpoint para obtener información de un archivo específico de EFS
+     // GET /api/efs/files/{fileName}/info
+     
     @GetMapping("/files/{fileName}/info")
     public ResponseEntity<EfsFileInfo> getFileInfo(@PathVariable String fileName) {
         try {
@@ -235,10 +234,10 @@ public class AwsEfsController {
         }
     }
 
-    /**
-     * Endpoint para verificar si un archivo existe en EFS
-     * GET /api/efs/files/{fileName}/exists
-     */
+    
+     // Endpoint para verificar si un archivo existe en EFS
+     // GET /api/efs/files/{fileName}/exists
+     
     @GetMapping("/files/{fileName}/exists")
     public ResponseEntity<Map<String, Object>> checkFileExists(@PathVariable String fileName) {
         Map<String, Object> response = new HashMap<>();
@@ -256,10 +255,10 @@ public class AwsEfsController {
         }
     }
 
-    /**
-     * Endpoint de salud para verificar accesibilidad de EFS
-     * GET /api/efs/health
-     */
+    
+    // Endpoint de salud para verificar accesibilidad de EFS
+     // GET /api/efs/health
+     
     @GetMapping("/health")
     public ResponseEntity<Map<String, Object>> healthCheck() {
         Map<String, Object> response = new HashMap<>();
