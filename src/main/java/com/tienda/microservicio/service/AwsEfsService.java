@@ -67,7 +67,7 @@ public class AwsEfsService {
         }
     }
 
-    // NUEVA FUNCIONALIDAD: Renombrar un archivo en EFS
+    // Renombrar un archivo en EFS
     public RenameResponse renameFile(String oldFileName, String newFileName) {
         try {
             // Validar que el archivo origen existe
@@ -278,7 +278,7 @@ public class AwsEfsService {
         );
     }
 
-    // NUEVO MÉTODO: Sanitizar nombre de archivo
+    // Sanitizar nombre de archivo
     private String sanitizeFileName(String fileName) {
         if (fileName == null) {
             return null;
