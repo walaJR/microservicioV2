@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -30,10 +31,10 @@ public class AwsS3Controller {
 
     private final AwsS3Service awsS3Service;
 
-    
-     // Endpoint para subir un archivo
-     // POST /api/s3/upload
-     
+    /**
+     * Endpoint para subir un archivo
+     * POST /api/s3/upload
+     */
     @PostMapping("/upload")
     public ResponseEntity<UploadResponse> uploadFile(@RequestParam("file") MultipartFile file) {
 
@@ -70,10 +71,61 @@ public class AwsS3Controller {
         }
     }
 
-    
-     // Endpoint para listar todos los archivos
-     // GET /api/s3/files
-     
+    /**
+     * Endpoint para actualizar/sobrescribir un archivo existente
+     * PUT /api/s3/files/{fileName}
+     */
+    @PutMapping("/files/{fileName}")
+    public ResponseEntity<UploadResponse> updateFile(
+            @PathVariable String fileName,
+            @RequestParam("file") MultipartFile file) {
+
+        // Validaciones
+        if (file.isEmpty()) {
+            UploadResponse errorResponse = new UploadResponse(
+                    "No se ha seleccionado ningún archivo",
+                    null, null, 0, false);
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+
+        // Validar tamaño del archivo (Máximo 50MB)
+        if (file.getSize() > 50 * 1024 * 1024) {
+            UploadResponse errorResponse = new UploadResponse(
+                    "El archivo es demasiado grande. Máximo 50MB permitido",
+                    null, null, 0, false);
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+
+        try {
+            // Verificar si el archivo existe
+            if (!awsS3Service.fileExists(fileName)) {
+                UploadResponse errorResponse = new UploadResponse(
+                        "El archivo especificado no existe: " + fileName,
+                        null, null, 0, false);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+            }
+
+            // Actualizar el archivo
+            UploadResponse response = awsS3Service.updateFile(fileName, file);
+
+            if (response.isSuccess()) {
+                return ResponseEntity.ok(response);
+            } else {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            }
+
+        } catch (Exception e) {
+            UploadResponse errorResponse = new UploadResponse(
+                    "Error interno del servidor: " + e.getMessage(),
+                    null, null, 0, false);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    /**
+     * Endpoint para listar todos los archivos
+     * GET /api/s3/files
+     */
     @GetMapping("/files")
     public ResponseEntity<List<S3FileInfo>> listFiles() {
         try {
@@ -84,10 +136,10 @@ public class AwsS3Controller {
         }
     }
 
-    
-     // Endpoint para descargar un archivo
-     // GET /api/s3/download/{fileName}
-     
+    /**
+     * Endpoint para descargar un archivo
+     * GET /api/s3/download/{fileName}
+     */
     @GetMapping("/download/{fileName}")
     public ResponseEntity<byte[]> downloadFile(@PathVariable String fileName) {
         try {
@@ -122,10 +174,10 @@ public class AwsS3Controller {
         }
     }
 
-    
-     // Endpoint para eliminar un archivo
-     // DELETE /api/s3/files/{fileName}
-     
+    /**
+     * Endpoint para eliminar un archivo
+     * DELETE /api/s3/files/{fileName}
+     */
     @DeleteMapping("/files/{fileName}")
     public ResponseEntity<Map<String, Object>> deleteFile(@PathVariable String fileName) {
         Map<String, Object> response = new HashMap<>();
@@ -159,10 +211,10 @@ public class AwsS3Controller {
         }
     }
 
-    
-     // Endpoint para obtener información de un archivo específico
-     // GET /api/s3/files/{fileName}/info
-     
+    /**
+     * Endpoint para obtener información de un archivo específico
+     * GET /api/s3/files/{fileName}/info
+     */
     @GetMapping("/files/{fileName}/info")
     public ResponseEntity<S3FileInfo> getFileInfo(@PathVariable String fileName) {
         try {
@@ -178,10 +230,10 @@ public class AwsS3Controller {
         }
     }
 
-    
-     // Endpoint para verificar si un archivo existe
-     // GET /api/s3/files/{fileName}/exists
-     
+    /**
+     * Endpoint para verificar si un archivo existe
+     * GET /api/s3/files/{fileName}/exists
+     */
     @GetMapping("/files/{fileName}/exists")
     public ResponseEntity<Map<String, Object>> checkFileExists(@PathVariable String fileName) {
         Map<String, Object> response = new HashMap<>();
@@ -199,10 +251,10 @@ public class AwsS3Controller {
         }
     }
 
-    
-     // Endpoint de salud para verificar conectividad con S3
-     // GET /api/s3/health
-     
+    /**
+     * Endpoint de salud para verificar conectividad con S3
+     * GET /api/s3/health
+     */
     @GetMapping("/health")
     public ResponseEntity<Map<String, Object>> healthCheck() {
         Map<String, Object> response = new HashMap<>();
