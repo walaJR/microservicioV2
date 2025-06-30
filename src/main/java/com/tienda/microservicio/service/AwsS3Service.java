@@ -97,6 +97,66 @@ public class AwsS3Service {
     }
 
     /**
+     * Actualiza/sobrescribe un archivo existente en el bucket S3
+     */
+    public UploadResponse updateFile(String fileName, MultipartFile file) {
+        try {
+            // Obtener información del archivo anterior para logging
+            S3FileInfo oldFileInfo = null;
+            try {
+                oldFileInfo = getFileInfo(fileName);
+                log.info("Actualizando archivo existente: {} (tamaño anterior: {} bytes)", 
+                        fileName, oldFileInfo.getSize());
+            } catch (Exception e) {
+                log.warn("No se pudo obtener información del archivo anterior: {}", e.getMessage());
+            }
+
+            String contentType = file.getContentType();
+
+            // Crear request de actualización (sobrescritura)
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(fileName)
+                    .contentType(contentType)
+                    .contentLength(file.getSize())
+                    .build();
+
+            // Sobrescribir archivo
+            s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+
+            // Generar URL del archivo
+            String fileUrl = getFileUrl(fileName);
+
+            log.info("Archivo actualizado exitosamente: {} (nuevo tamaño: {} bytes)", 
+                    fileName, file.getSize());
+
+            return new UploadResponse(
+                    "Archivo actualizado exitosamente",
+                    fileName,
+                    fileUrl,
+                    file.getSize(),
+                    true);
+
+        } catch (IOException e) {
+            log.error("Error al leer el nuevo archivo: {}", e.getMessage());
+            return new UploadResponse(
+                    "Error al leer el archivo: " + e.getMessage(),
+                    null,
+                    null,
+                    0,
+                    false);
+        } catch (S3Exception e) {
+            log.error("Error de S3 al actualizar archivo: {}", e.getMessage());
+            return new UploadResponse(
+                    "Error de S3: " + e.getMessage(),
+                    null,
+                    null,
+                    0,
+                    false);
+        }
+    }
+
+    /**
      * Lista todos los archivos del bucket
      */
     public List<S3FileInfo> listFiles() {
